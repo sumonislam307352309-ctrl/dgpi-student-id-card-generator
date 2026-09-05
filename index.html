@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ID Card Generator | Dhaka Govt. Polytechnic Institute</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Noto Sans Bengali', sans-serif;
+      background: #f1f5f9;
+      margin: 0;
+      color: #1e293b;
+    }
+    .bn { font-family: 'Noto Sans Bengali', sans-serif; }
+
+    /* ===== CARD DIMENSIONS ===== */
+    .id-card, .id-card-back {
+      color: #000;
+      width: 280px;
+      height: 440px;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: #fff;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    /* Top Banner Header */
+    .header-blue {
+      background: #25408f;
+      height: 115px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      color: white;
+      text-align: center;
+    }
+
+    /* 100% Round Logo Design */
+    .logo-wrap {
+      width: 58px !important;
+      height: 58px !important;
+      min-width: 58px !important;
+      min-height: 58px !important;
+      margin: 0 auto 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50% !important;
+      overflow: hidden !important;
+      background-color: #fff;
+    }
+
+    .logo-wrap img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;  
+      border-radius: 50% !important;
+    }
+
+    /* Student Photo (No Blue Border & No Padding) */
+    .photo-box {
+      width: 108px;
+      height: 128px;
+      border: none;
+      border-radius: 8px;
+      margin: 10px auto 6px;
+      overflow: hidden;
+      background: #ffffff;
+      padding: 0;
+    }
+    .photo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    /* Signature Area */
+    .sig-area {
+      position: absolute;
+      bottom: 12px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .sig-box {
+      width: 95px;
+      height: 28px;
+      border-bottom: 1px solid #64748b;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .sig-box img {
+      max-height: 26px;
+      max-width: 90px;
+      object-fit: contain;
+    }
+
+    /* Back Side Watermark CSS */
+    .watermark {
+      position: absolute;
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.12;
+      width: 180px;
+      height: 180px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .watermark img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #qrcode img, #qrcode canvas {
+      width: 85px !important;
+      height: 85px !important;
+      margin: 0 auto;
+    }
+
+    .lang-btn.active {
+      background: #1e40af;
+      color: white;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+  <div>
+    <!-- Top Header Bar -->
+    <header class="bg-blue-900 text-white py-3 shadow-md">
+      <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div>
+          <h1 class="text-lg font-bold bn" id="pageTitle">আইডি কার্ড জেনারেটর</h1>
+          <p class="text-blue-200 text-xs tracking-wide" id="pageSubtitle">DHAKA GOVT. POLYTECHNIC INSTITUTE</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="setLang('bn')" id="btnBn" class="lang-btn active px-4 py-1 rounded-full text-sm border border-blue-400">বাংলা</button>
+          <button onclick="setLang('en')" id="btnEn" class="lang-btn px-4 py-1 rounded-full text-sm border border-blue-400">English</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- INPUT FORM -->
+      <div class="bg-white rounded-xl shadow p-5 space-y-4">
+        <h2 class="font-semibold text-blue-900 border-b pb-2 text-base" id="formTitle">তথ্য পূরণ করুন</h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblLogo">লোগো (Logo)</label>
+            <input type="file" id="logoInput" accept="image/*" class="w-full border rounded p-1 text-xs" onchange="previewImage(this,'logoPreview')" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblPhoto">ছাত্রের ছবি</label>
+            <input type="file" id="photoInput" accept="image/*" class="w-full border rounded p-1 text-xs" onchange="previewImage(this,'photoPreview')" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblSig1">স্বাক্ষর (বিভাগীয় প্রধান)</label>
+            <input type="file" id="sig1Input" accept="image/*" class="w-full border rounded p-1 text-xs" onchange="previewImage(this,'sig1Preview')" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblSig2">স্বাক্ষর (অধ্যক্ষ)</label>
+            <input type="file" id="sig2Input" accept="image/*" class="w-full border rounded p-1 text-xs" onchange="previewImage(this,'sig2Preview')" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblNameBn">নাম (বাংলা)</label>
+            <input type="text" id="nameBn" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="আপনার নাম বাংলাতে লিখুন" oninput="updateCard()" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblNameEn">Name (English)</label>
+            <input type="text" id="nameEn" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="Enter Full Name" oninput="updateCard()" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblRoll">রোল নং</label>
+            <input type="text" id="roll" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="যেমন: ১২৩৪৫৬" oninput="updateCard()" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblSession">সেশন</label>
+            <input type="text" id="session" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="যেমন: ২০২২-২৩" oninput="updateCard()" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblShift">শিফট</label>
+            <input type="text" id="shift" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="যেমন: ১ম / ২য়" oninput="updateCard()" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblTech">টেকনোলজি</label>
+            <input type="text" id="tech" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="যেমন: আরএসি / কম্পিউটার" oninput="updateCard()" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblReg">রেজিঃ নং</label>
+            <input type="text" id="reg" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="রেজিস্ট্রেশন নম্বর" oninput="updateCard()" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-700" id="lblBlood">রক্তের গ্রুপ</label>
+            <input type="text" id="blood" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="যেমন: A+, O+" oninput="updateCard()" />
+          </div>
+        </div>
+
+        <div class="border-t pt-3">
+          <p class="text-xs font-semibold text-gray-600 mb-2" id="backTitle">পিছনের তথ্য</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-medium text-gray-700" id="lblFather">পিতার নাম</label>
+              <input type="text" id="father" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="পিতার নাম লিখুন" oninput="updateCard()" />
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-700" id="lblMother">মাতার নাম</label>
+              <input type="text" id="mother" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="মাতার নাম লিখুন" oninput="updateCard()" />
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-medium text-gray-700" id="lblAddress">ঠিকানা</label>
+              <textarea id="address" rows="2" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="বর্তমান বা স্থায়ী ঠিকানা লিখুন" oninput="updateCard()"></textarea>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-700" id="lblMobile">মোবাইল</label>
+              <input type="text" id="mobile" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="01XXXXXXXXX" oninput="updateCard()" />
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-700" id="lblEmergency">জরুরী যোগাযোগ</label>
+              <input type="text" id="emergency" class="w-full border rounded px-2.5 py-1.5 text-sm" placeholder="জরুরী মোবাইল নম্বর" oninput="updateCard()" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button onclick="downloadPDF()" class="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-medium py-2.5 rounded-lg text-sm shadow flex items-center justify-center gap-2">
+            <span>📄</span> <span>A4 PDF ডাউনলোড (প্রিন্ট রেডি)</span>
+          </button>
+          <button onclick="resetForm()" class="bg-gray-200 hover:bg-gray-300 px-4 rounded-lg text-sm font-medium text-gray-700">রিসেট</button>
+        </div>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="bg-white rounded-xl shadow p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-blue-900 text-base" id="previewTitle">লাইভ প্রিভিউ</h2>
+            <div class="flex gap-1 bg-gray-100 p-1 rounded-full">
+              <button onclick="showSide('front')" id="tabFront" class="px-3 py-1 rounded-full text-xs font-medium bg-blue-700 text-white">Front Side</button>
+              <button onclick="showSide('back')" id="tabBack" class="px-3 py-1 rounded-full text-xs font-medium text-gray-700">Back Side</button>
+            </div>
+          </div>
+
+          <div class="flex justify-center bg-slate-100 rounded-xl py-6 min-h-[460px] border">
+
+            <!-- FRONT SIDE -->
+            <div id="frontCard" class="id-card">
+              <div class="header-blue">
+                <div class="logo-wrap">
+                  <img id="logoPreview" class="hidden" alt="logo" />
+                  <span id="logoPlaceholder" class="text-[9px] text-blue-800 font-bold">LOGO</span>
+                </div>
+                <div class="text-[12.5px] font-bold leading-tight bn" id="instName">ঢাকা সরকারি পলিটেকনিক ইনস্টিটিউট</div>
+                <div class="text-[9.5px] opacity-95 mt-0.5" id="instAddress">তেজগাঁও শি/এ, ঢাকা-১২০৮</div>
+              </div>
+
+              <div class="photo-box">
+                <img id="photoPreview" class="hidden" alt="photo" />
+                <div id="photoPlaceholder" class="w-full h-full flex items-center justify-center text-gray-400 text-xs bg-gray-100">ছবি</div>
+              </div>
+
+              <div class="text-center px-3">
+                <div class="text-[15px] font-bold bn leading-tight text-gray-900" id="cardNameBn">শিক্ষার্থীর নাম</div>
+                <div class="text-[11px] text-gray-700 font-semibold tracking-wide" id="cardNameEn">STUDENT NAME</div>
+              </div>
+
+              <div class="px-4 mt-3 grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] font-medium text-gray-800">
+                <div><span id="lRoll">রোল নং:</span> <b id="cRoll" class="font-bold">------</b></div>
+                <div><span id="lTech">টেকনোলজি:</span> <b id="cTech" class="font-bold">------</b></div>
+                <div><span id="lSession">সেশন:</span> <b id="cSession" class="font-bold">------</b></div>
+                <div><span id="lReg">রেজিঃ নং:</span> <b id="cReg" class="font-bold">------</b></div>
+                <div><span id="lShift">শিফট:</span> <b id="cShift" class="font-bold">------</b></div>
+                <div><span id="lBlood">রক্তের গ্রুপ:</span> <b id="cBlood" class="text-red-600 font-bold">--</b></div>
+              </div>
+
+              <div class="sig-area">
+                <div class="text-center">
+                  <div class="sig-box"><img id="sig1Preview" class="hidden" /></div>
+                  <div class="text-[8px] text-gray-600 mt-0.5" id="sig1Label">বিভাগীয় প্রধান</div>
+                </div>
+                <div class="text-center">
+                  <div class="sig-box"><img id="sig2Preview" class="hidden" /></div>
+                  <div class="text-[8px] text-gray-600 mt-0.5" id="sig2Label">অধ্যক্ষ/উপাধ্যক্ষ</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- BACK SIDE -->
+            <div id="backCard" class="id-card-back hidden flex flex-col justify-between bg-white relative overflow-hidden border border-gray-200">
+              
+              <!-- Background Logo Watermark -->
+              <div class="watermark"><img id="backLogo" alt="" /></div>
+
+              <div class="relative z-10 w-full">
+                <!-- Top Blue Header -->
+                <div class="bg-blue-900 text-white text-center py-2.5 px-2 shadow-sm">
+                  <div class="text-[11.5px] font-bold bn leading-tight" id="backInstName">ঢাকা সরকারি পলিটেকনিক ইনস্টিটিউট</div>
+                  <div class="text-[8.5px] text-blue-200 font-medium tracking-wide mt-0.5" id="backInstAddress">তেজগাঁও শি/এ, ঢাকা-১২০৮</div>
+                </div>
+
+                <!-- Directly Placed Info -->
+                <div class="px-5 pt-4 text-[11px] space-y-2 text-gray-900 font-medium">
+                  <div><span id="lFather" class="text-blue-900 font-bold">পিতার নাম:</span> <span id="cFather" class="font-semibold text-gray-800">------</span></div>
+                  <div><span id="lMother" class="text-blue-900 font-bold">মাতার নাম:</span> <span id="cMother" class="font-semibold text-gray-800">------</span></div>
+                  <div>
+                    <span id="lAddress" class="text-blue-900 font-bold">ঠিকানা:</span>
+                    <span class="font-semibold text-gray-800" id="cAddress">------</span>
+                  </div>
+                  <div><span id="lMobile" class="text-blue-900 font-bold">মোবাইল:</span> <span id="cMobile" class="font-semibold text-gray-800">------</span></div>
+                  <div><span id="lEmergency" class="text-blue-900 font-bold">জরুরী যোগাযোগ:</span> <span id="cEmergency" class="font-semibold text-gray-800">------</span></div>
+                </div>
+              </div>
+
+              <!-- QR Code Area -->
+              <div class="relative z-10 my-auto py-1">
+                <div id="qrcode" class="flex justify-center"></div>
+              </div>
+
+              <!-- Footer Notice Area -->
+              <div class="relative z-10 px-3 py-2 text-[8px] text-center text-gray-800 leading-tight bg-blue-50/90 border-t border-blue-100">
+                <div id="backNote1">ব্যবহারকারী ব্যতীত অন্য কেউ কার্ডটি পেলে অনুগ্রহ করে</div>
+                <div id="backNote2">নিচের ঠিকানায় পাঠিয়ে দিন</div>
+                <div class="font-bold mt-0.5 text-blue-950 text-[8.5px]" id="backNote3">অধ্যক্ষ, ঢাকা সরকারি পলিটেকনিক ইনস্টিটিউট</div>
+                <div id="backNote4" class="text-gray-600">তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <p class="text-center text-xs text-gray-500 mt-3" id="hintText">A4 পেজে বর্ডার সহ ফ্রন্ট ও ব্যাক সাইড প্রিন্ট করার উপযুক্ত ফরম্যাটে ডাউনলোড হবে।</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- DEVELOPER FOOTER SECTION -->
+  <footer class="bg-gray-900 text-gray-300 py-6 mt-8 border-t border-gray-800 text-center text-xs">
+    <div class="max-w-5xl mx-auto px-4 space-y-2">
+      <p class="font-semibold text-gray-100 text-sm">
+        Developed with ❤️ by <span class="text-blue-400 font-bold">MD SUMON ISLAM</span>
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 text-gray-400">
+        <p>🎓 Student at <span class="text-gray-200 font-medium">Dhaka Govt. Polytechnic Institute</span></p>
+        <span class="hidden sm:inline text-gray-600">•</span>
+        <p>❄️ Refrigeration & Air Conditioning Technology</p>
+        <span class="hidden sm:inline text-gray-600">•</span>
+        <p>📚 Session: <span class="text-gray-200 font-medium">2022–23</span></p>
+      </div>
+      <p class="text-gray-500 text-[11px] pt-1">
+        © 2026 MD SUMON ISLAM — All Rights Reserved.
+      </p>
+    </div>
+  </footer>
+
+<script>
+  let currentLang = 'bn';
+
+  const texts = {
+    bn: {
+      pageTitle: 'আইডি কার্ড জেনারেটর',
+      pageSubtitle: 'DHAKA GOVT. POLYTECHNIC INSTITUTE',
+      formTitle: 'তথ্য পূরণ করুন',
+      previewTitle: 'লাইভ প্রিভিউ',
+      lblLogo: 'লোগো (Logo)',
+      lblPhoto: 'ছাত্রের ছবি',
+      lblSig1: 'স্বাক্ষর (বিভাগীয় প্রধান)',
+      lblSig2: 'স্বাক্ষর (অধ্যক্ষ)',
+      lblNameBn: 'নাম (বাংলা)',
+      lblNameEn: 'Name (English)',
+      lblRoll: 'রোল নং',
+      lblSession: 'সেশন',
+      lblShift: 'শিফট',
+      lblTech: 'টেকনোলজি',
+      lblReg: 'রেজিঃ নং',
+      lblBlood: 'রক্তের গ্রুপ',
+      backTitle: 'পিছনের তথ্য',
+      lblFather: 'পিতার নাম',
+      lblMother: 'মাতার নাম',
+      lblAddress: 'ঠিকানা',
+      lblMobile: 'মোবাইল',
+      lblEmergency: 'জরুরী যোগাযোগ',
+      instName: 'ঢাকা সরকারি পলিটেকনিক ইনস্টিটিউট',
+      instAddress: 'তেজগাঁও শি/এ, ঢাকা-১২০৮',
+      lRoll: 'রোল নং:', lSession: 'সেশন:', lShift: 'শিফট:',
+      lTech: 'টেকনোলজি:', lReg: 'রেজিঃ নং:', lBlood: 'রক্তের গ্রুপ:',
+      sig1Label: 'বিভাগীয় প্রধান', sig2Label: 'অধ্যক্ষ/উপাধ্যক্ষ',
+      backInstName: 'ঢাকা সরকারি পলিটেকনিক ইনস্টিটিউট',
+      backInstAddress: 'তেজগাঁও শি/এ, ঢাকা-১২০৮',
+      lFather: 'পিতার নাম:', lMother: 'মাতার নাম:', lAddress: 'ঠিকানা:',
+      lMobile: 'মোবাইল:', lEmergency: 'জরুরী যোগাযোগ:',
+      backNote1: 'ব্যবহারকারী ব্যতীত অন্য কেউ কার্ডটি পেলে অনুগ্রহ করে',
+      backNote2: 'নিচের ঠিকানায় পাঠিয়ে দিন',
+      backNote3: 'অধ্যক্ষ, ঢাকা সরকারি পলিটেকনিক ইনস্টিটিউট',
+      backNote4: 'তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮',
+      hintText: 'A4 পেজে বর্ডার সহ ফ্রন্ট ও ব্যাক সাইড প্রিন্ট করার উপযুক্ত ফরম্যাটে ডাউনলোড হবে।'
+    },
+    en: {
+      pageTitle: 'ID Card Generator',
+      pageSubtitle: 'DHAKA GOVT. POLYTECHNIC INSTITUTE',
+      formTitle: 'Fill Information',
+      previewTitle: 'Live Preview',
+      lblLogo: 'Logo',
+      lblPhoto: 'Student Photo',
+      lblSig1: 'Signature (Dept. Head)',
+      lblSig2: 'Signature (Principal)',
+      lblNameBn: 'Name (Bangla)',
+      lblNameEn: 'Name (English)',
+      lblRoll: 'Roll No',
+      lblSession: 'Session',
+      lblShift: 'Shift',
+      lblTech: 'Technology',
+      lblReg: 'Reg. No',
+      lblBlood: 'Blood Group',
+      backTitle: 'Back Side Information',
+      lblFather: "Father's Name",
+      lblMother: "Mother's Name",
+      lblAddress: 'Address',
+      lblMobile: 'Mobile',
+      lblEmergency: 'Emergency Contact',
+      instName: 'DHAKA GOVT. POLYTECHNIC INSTITUTE',
+      instAddress: 'TEJGAON I/A, DHAKA-1208',
+      lRoll: 'Roll No:', lSession: 'Session:', lShift: 'Shift:',
+      lTech: 'Technology:', lReg: 'Reg. No:', lBlood: 'Blood Group:',
+      sig1Label: 'Dept. Head', sig2Label: 'Principal / VP',
+      backInstName: 'DHAKA GOVT. POLYTECHNIC INSTITUTE',
+      backInstAddress: 'TEJGAON I/A, DHAKA-1208',
+      lFather: "Father's Name:", lMother: "Mother's Name:", lAddress: 'Address:',
+      lMobile: 'Mobile:', lEmergency: 'Emergency Contact:',
+      backNote1: 'If found by anyone other than the owner, please',
+      backNote2: 'return it to the following address',
+      backNote3: 'Principal, Dhaka Govt. Polytechnic Institute',
+      backNote4: 'Tejgaon Industrial Area, Dhaka-1208',
+      hintText: 'A4 PDF will generate Front & Back with cut-line borders ready for print.'
+    }
+  };
+
+  function setLang(lang) {
+    currentLang = lang;
+    document.getElementById('btnBn').classList.toggle('active', lang === 'bn');
+    document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+    const t = texts[lang];
+
+    Object.keys(t).forEach(key => {
+      const el = document.getElementById(key);
+      if (el) el.textContent = t[key];
+    });
+    updateCard();
+  }
+
+  function previewImage(input, id) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('অনুগ্রহ করে একটি ছবি ফাইল সিলেক্ট করুন');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById(id);
+      img.src = e.target.result;
+      img.classList.remove('hidden');
+
+      if (id === 'logoPreview') {
+        const placeholder = document.getElementById('logoPlaceholder');
+        if (placeholder) placeholder.classList.add('hidden');
+        
+        const backLogo = document.getElementById('backLogo');
+        if (backLogo) {
+          backLogo.src = e.target.result;
+        }
+      }
+      if (id === 'photoPreview') {
+        const placeholder = document.getElementById('photoPlaceholder');
+        if (placeholder) placeholder.classList.add('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function updateCard() {
+    document.getElementById('cardNameBn').textContent = document.getElementById('nameBn').value || 'শিক্ষার্থীর নাম';
+    document.getElementById('cardNameEn').textContent = document.getElementById('nameEn').value || 'STUDENT NAME';
+    document.getElementById('cRoll').textContent = document.getElementById('roll').value || '------';
+    document.getElementById('cSession').textContent = document.getElementById('session').value || '------';
+    document.getElementById('cShift').textContent = document.getElementById('shift').value || '------';
+    document.getElementById('cTech').textContent = document.getElementById('tech').value || '------';
+    document.getElementById('cReg').textContent = document.getElementById('reg').value || '------';
+    document.getElementById('cBlood').textContent = document.getElementById('blood').value || '--';
+    document.getElementById('cFather').textContent = document.getElementById('father').value || '------';
+    document.getElementById('cMother').textContent = document.getElementById('mother').value || '------';
+    document.getElementById('cAddress').textContent = document.getElementById('address').value || '------';
+    document.getElementById('cMobile').textContent = document.getElementById('mobile').value || '------';
+    document.getElementById('cEmergency').textContent = document.getElementById('emergency').value || '------';
+    updateQR();
+  }
+
+  function updateQR() {
+    const div = document.getElementById('qrcode');
+    div.innerHTML = '';
+    const name = document.getElementById('nameEn').value || document.getElementById('nameBn').value || 'Student';
+    const data = `DHAKA GOVT. POLYTECHNIC INSTITUTE
+Name: ${name}
+Roll: ${document.getElementById('roll').value || 'N/A'}
+Reg No: ${document.getElementById('reg').value || 'N/A'}
+Blood: ${document.getElementById('blood').value || 'N/A'}`;
+
+    new QRCode(div, {
+      text: data,
+      width: 85,
+      height: 85,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  function showSide(side) {
+    document.getElementById('frontCard').classList.toggle('hidden', side !== 'front');
+    document.getElementById('backCard').classList.toggle('hidden', side !== 'back');
+    
+    document.getElementById('tabFront').className = side === 'front' 
+      ? 'px-3 py-1 rounded-full text-xs font-medium bg-blue-700 text-white' 
+      : 'px-3 py-1 rounded-full text-xs font-medium text-gray-700';
+
+    document.getElementById('tabBack').className = side === 'back' 
+      ? 'px-3 py-1 rounded-full text-xs font-medium bg-blue-700 text-white' 
+      : 'px-3 py-1 rounded-full text-xs font-medium text-gray-700';
+  }
+
+  async function downloadPDF() {
+    const btn = document.querySelector('button[onclick="downloadPDF()"]');
+    const oldText = btn ? btn.innerHTML : '';
+    try {
+      if (!window.jspdf || !window.html2canvas) {
+        alert('লাইব্রেরি লোড হয়নি, পেজ রিফ্রেশ করুন।');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      const cardWidthMM = 54;
+      const cardHeightMM = 85.6;
+
+      const front = document.getElementById('frontCard');
+      const back = document.getElementById('backCard');
+      const frontWasHidden = front.classList.contains('hidden');
+
+      if (btn) {
+        btn.innerHTML = '⏳ A4 PDF তৈরি হচ্ছে...';
+        btn.disabled = true;
+      }
+
+      const opts = {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      };
+
+      // Capture Front
+      front.classList.remove('hidden');
+      back.classList.add('hidden');
+      await new Promise(r => setTimeout(r, 120));
+      const canvasFront = await html2canvas(front, opts);
+      const imgFront = canvasFront.toDataURL('image/jpeg', 0.98);
+
+      // Capture Back
+      front.classList.add('hidden');
+      back.classList.remove('hidden');
+      await new Promise(r => setTimeout(r, 120));
+      const canvasBack = await html2canvas(back, opts);
+      const imgBack = canvasBack.toDataURL('image/jpeg', 0.98);
+
+      const startY = 35;
+      const gapX = 15;
+      const startXFront = (210 - (cardWidthMM * 2 + gapX)) / 2;
+      const startXBack = startXFront + cardWidthMM + gapX;
+
+      // Draw Cut-Line Border Box for Front Card
+      pdf.setDrawColor(180, 180, 180);
+      pdf.setLineWidth(0.4);
+      pdf.setLineDashPattern([2, 2], 0);
+      pdf.rect(startXFront - 0.5, startY - 0.5, cardWidthMM + 1, cardHeightMM + 1);
+
+      // Draw Cut-Line Border Box for Back Card
+      pdf.rect(startXBack - 0.5, startY - 0.5, cardWidthMM + 1, cardHeightMM + 1);
+
+      // Add Card Images into A4
+      pdf.addImage(imgFront, 'JPEG', startXFront, startY, cardWidthMM, cardHeightMM, undefined, 'FAST');
+      pdf.addImage(imgBack, 'JPEG', startXBack, startY, cardWidthMM, cardHeightMM, undefined, 'FAST');
+
+      // Header Title & Instructions on Print Sheet
+      pdf.setTextColor(40, 40, 40);
+      pdf.setFontSize(14);
+      pdf.text("DHAKA GOVT. POLYTECHNIC INSTITUTE", 105, 18, { align: "center" });
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Student ID Card - Printable Layout (Standard A4 Size)", 105, 24, { align: "center" });
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 120, 120);
+      pdf.setLineDashPattern([], 0);
+      pdf.line(20, 27, 190, 27);
+
+      pdf.text("* Cut along the dashed borders and fold/laminate for exact ID card dimensions.", 105, startY + cardHeightMM + 12, { align: "center" });
+
+      // Footer Credit in Printed PDF
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text("System Developed by: MD SUMON ISLAM (RAC, Session 2022-23)", 105, 285, { align: "center" });
+
+      if (frontWasHidden) {
+        front.classList.add('hidden');
+        back.classList.remove('hidden');
+      } else {
+        front.classList.remove('hidden');
+        back.classList.add('hidden');
+      }
+
+      const inputName = document.getElementById('nameEn').value || 'Student';
+      const nameStr = inputName.trim().replace(/\s+/g, '_');
+      pdf.save(`${nameStr}_ID_Card_A4.pdf`);
+
+    } catch (err) {
+      console.error(err);
+      alert('PDF তৈরি করতে সমস্যা হয়েছে।');
+    } finally {
+      if (btn) {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+      }
+    }
+  }
+
+  function resetForm() {
+    document.querySelectorAll('input[type="text"], textarea').forEach(i => i.value = '');
+    ['logoInput','photoInput','sig1Input','sig2Input'].forEach(id => document.getElementById(id).value = '');
+    ['logoPreview','photoPreview','sig1Preview','sig2Preview'].forEach(id => {
+      const el = document.getElementById(id);
+      el.src = ''; 
+      el.classList.add('hidden');
+    });
+    document.getElementById('logoPlaceholder').classList.remove('hidden');
+    document.getElementById('photoPlaceholder').classList.remove('hidden');
+    
+    const backLogo = document.getElementById('backLogo');
+    if (backLogo) backLogo.src = '';
+
+    updateCard();
+  }
+
+  setLang('bn');
+  updateCard();
+</script>
+</body>
+</html>
